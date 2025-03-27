@@ -1,5 +1,5 @@
 // src/components/EditScheduleForm.jsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 // 日付フォーマットのヘルパー関数
 const formatDateForInput = (year, month, day) => {
@@ -11,6 +11,10 @@ const formatDateForInput = (year, month, day) => {
 };
 
 const EditScheduleForm = ({ schedule, onUpdate, onCancel }) => {
+  // デバッグ用のref
+  const departureDateRef = useRef(null);
+  const returnDateRef = useRef(null);
+  
   const [formData, setFormData] = useState({
     orderDate: '',
     departureDate: '',
@@ -22,7 +26,6 @@ const EditScheduleForm = ({ schedule, onUpdate, onCancel }) => {
     contactPerson: '',
     contactInfo: '',
     busType: 'マイクロ',
-    hasSupportSeat: false,
     memo: '',
     span: 1,
   });
@@ -78,7 +81,6 @@ const EditScheduleForm = ({ schedule, onUpdate, onCancel }) => {
         contactPerson: content.travelAgency || '',  // 担当者は旅行会社フィールドから
         contactInfo: content.driver || '',   // 連絡先はドライバーフィールドから
         busType: busType,
-        hasSupportSeat: content.memo?.includes('補助席あり') || false,
         memo: content.memo || '',
         span: span || 1,
       };
@@ -88,13 +90,29 @@ const EditScheduleForm = ({ schedule, onUpdate, onCancel }) => {
     }
   }, [schedule]);
 
+  // フォームデータが更新されたときにカレンダー入力フィールドの動作確認
+  useEffect(() => {
+    console.log('フォームデータが更新されました:', formData);
+    
+    // 日付入力フィールドのデバッグログ
+    if (departureDateRef.current) {
+      console.log('出発日入力要素:', departureDateRef.current);
+      console.log('出発日入力値:', departureDateRef.current.value);
+    }
+    
+    if (returnDateRef.current) {
+      console.log('帰着日入力要素:', returnDateRef.current);
+      console.log('帰着日入力値:', returnDateRef.current.value);
+    }
+  }, [formData]);
+
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    console.log(`フィールド ${name} の値を変更: ${type === 'checkbox' ? checked : value}`);
+    const { name, value } = e.target;
+    console.log(`フィールド ${name} の値を変更: ${value}`);
     
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value,
+      [name]: value,
     }));
   };
 
@@ -103,69 +121,71 @@ const EditScheduleForm = ({ schedule, onUpdate, onCancel }) => {
     const departureDate = e.target.value;
     console.log(`出発日が変更されました: ${departureDate}`);
     
-    // 更新したいフィールドを変数に格納
-    let newReturnDate = formData.returnDate;
-    
-    // 予約日数に基づいて帰着日を計算
-    if (departureDate && formData.span > 0) {
-      try {
-        const depDate = new Date(departureDate);
-        const returnDate = new Date(depDate);
-        returnDate.setDate(depDate.getDate() + parseInt(formData.span) - 1);
-        
-        // yyyy-mm-dd 形式に変換
-        newReturnDate = returnDate.toISOString().split('T')[0];
-        console.log(`計算された新しい帰着日: ${newReturnDate}`);
-      } catch (error) {
-        console.error('帰着日計算エラー:', error);
-      }
-    }
+    // 帰着日をデフォルトで出発日と同じに設定
+    let returnDate = departureDate;
     
     // フォームデータを更新
     setFormData(prev => ({
       ...prev,
       departureDate,
-      returnDate: newReturnDate
+      returnDate
     }));
   };
 
-  // 予約日数が変更されたときに帰着日を再計算
-  const handleSpanChange = (e) => {
-    const span = parseInt(e.target.value) || 1;
-    console.log(`予約日数が変更されました: ${span}`);
+  // 帰着日変更時の処理
+  const handleReturnDateChange = (e) => {
+    const returnDate = e.target.value;
+    console.log(`帰着日が変更されました: ${returnDate}`);
     
-    let newReturnDate = formData.returnDate;
-    
-    // 出発日が設定されている場合のみ帰着日を計算
-    if (formData.departureDate) {
-      try {
-        const depDate = new Date(formData.departureDate);
-        const returnDate = new Date(depDate);
-        returnDate.setDate(depDate.getDate() + (span - 1));
-        
-        // yyyy-mm-dd 形式に変換
-        newReturnDate = returnDate.toISOString().split('T')[0];
-        console.log(`予約日数変更による新しい帰着日: ${newReturnDate}`);
-      } catch (error) {
-        console.error('帰着日再計算エラー:', error);
-      }
+    // 帰着日が出発日より前の場合は警告
+    if (formData.departureDate && returnDate < formData.departureDate) {
+      alert('帰着日は出発日以降の日付を設定してください。');
+      return;
     }
     
-    // フォームデータを更新
-    setFormData(prev => ({
-      ...prev,
-      span,
-      returnDate: newReturnDate
-    }));
+    // 日付の差分を計算し、予約日数を自動設定
+    if (formData.departureDate && returnDate) {
+      const depDate = new Date(formData.departureDate);
+      const retDate = new Date(returnDate);
+      const diffTime = Math.abs(retDate - depDate);
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+      
+      console.log(`出発日と帰着日の差: ${diffDays}日`);
+      
+      // フォームデータを更新
+      setFormData(prev => ({
+        ...prev,
+        returnDate,
+        span: diffDays
+      }));
+    } else {
+      // 出発日が設定されていない場合は帰着日のみ更新
+      setFormData(prev => ({
+        ...prev,
+        returnDate
+      }));
+    }
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     console.log('更新するデータ:', formData);
     
+    // 出発日と帰着日から予約日数を計算
+    let span = 1;
+    if (formData.departureDate && formData.returnDate) {
+      const depDate = new Date(formData.departureDate);
+      const retDate = new Date(formData.returnDate);
+      const diffTime = Math.abs(retDate - depDate);
+      span = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+      
+      console.log(`出発日と帰着日から計算された予約日数: ${span}日`);
+    }
+    
     // 更新データを作成
     const updatedData = {
       ...formData,
+      span: span,
       busName: schedule.busName,
       day: schedule.schedule.day,
       id: schedule.schedule.id || Date.now().toString(), // IDがなければ新規作成
@@ -179,11 +199,6 @@ const EditScheduleForm = ({ schedule, onUpdate, onCancel }) => {
       onUpdate({ delete: true, id: schedule.schedule.id });
     }
   };
-
-  // フォームデータの変更をデバッグ用にログ出力
-  useEffect(() => {
-    console.log('EditScheduleFormのフォームデータが更新されました:', formData);
-  }, [formData]);
 
   return (
     <div className="form-container">
@@ -215,6 +230,7 @@ const EditScheduleForm = ({ schedule, onUpdate, onCancel }) => {
               name="departureDate"
               value={formData.departureDate}
               onChange={handleDepartureDateChange}
+              ref={departureDateRef}
               required
             />
           </div>
@@ -226,7 +242,8 @@ const EditScheduleForm = ({ schedule, onUpdate, onCancel }) => {
               id="returnDate"
               name="returnDate"
               value={formData.returnDate}
-              onChange={handleChange}
+              onChange={handleReturnDateChange}
+              ref={returnDateRef}
             />
           </div>
         </div>
@@ -299,47 +316,19 @@ const EditScheduleForm = ({ schedule, onUpdate, onCancel }) => {
           />
         </div>
 
-        <div className="form-row">
-          <div className="form-group">
-            <label htmlFor="busType">車種情報</label>
-            <select
-              id="busType"
-              name="busType"
-              value={formData.busType}
-              onChange={handleChange}
-            >
-              <option value="マイクロ">マイクロ</option>
-              <option value="小型">小型</option>
-              <option value="中型">中型</option>
-              <option value="大型">大型</option>
-            </select>
-          </div>
-
-          <div className="form-group checkbox-group">
-            <label>
-              <input
-                type="checkbox"
-                name="hasSupportSeat"
-                checked={formData.hasSupportSeat}
-                onChange={handleChange}
-              />
-              補助席あり
-            </label>
-          </div>
-        </div>
-
         <div className="form-group">
-          <label htmlFor="span">予約日数</label>
-          <input
-            type="number"
-            id="span"
-            name="span"
-            min="1"
-            max="7"
-            value={formData.span}
-            onChange={handleSpanChange}
-            required
-          />
+          <label htmlFor="busType">車種情報</label>
+          <select
+            id="busType"
+            name="busType"
+            value={formData.busType}
+            onChange={handleChange}
+          >
+            <option value="マイクロ">マイクロ</option>
+            <option value="小型">小型</option>
+            <option value="中型">中型</option>
+            <option value="大型">大型</option>
+          </select>
         </div>
 
         <div className="form-group">
@@ -372,15 +361,14 @@ const EditScheduleForm = ({ schedule, onUpdate, onCancel }) => {
         </div>
       </form>
       
-      {/* デバッグ情報 - 開発環境でのみ表示 */}
-      {process.env.NODE_ENV !== 'production' && (
-        <div style={{marginTop: '20px', padding: '10px', backgroundColor: '#f5f5f5', fontSize: '12px'}}>
-          <h4>デバッグ情報</h4>
-          <p>出発日: {formData.departureDate}</p>
-          <p>帰着日: {formData.returnDate}</p>
-          <p>車種: {formData.busType}</p>
-        </div>
-      )}
+      {/* デバッグ情報 - 常に表示 */}
+      <div style={{marginTop: '20px', padding: '10px', backgroundColor: '#f5f5f5', fontSize: '12px'}}>
+        <h4>デバッグ情報</h4>
+        <p>出発日: {formData.departureDate}</p>
+        <p>帰着日: {formData.returnDate}</p>
+        <p>車種: {formData.busType}</p>
+        <p>計算された予約日数: {formData.span}日</p>
+      </div>
     </div>
   );
 };

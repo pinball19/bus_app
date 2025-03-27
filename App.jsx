@@ -140,7 +140,7 @@ function App() {
                   travelAgency: item.contactPerson || '',
                   price: item.price || '',
                   driver: item.contactInfo || '',
-                  memo: `${item.busType || ''}${item.hasSupportSeat ? '・補助席あり' : ''}${item.memo ? '・' + item.memo : ''}`,
+                  memo: `${item.busType || ''}${item.memo ? '・' + item.memo : ''}`,
                 }
               };
             })
@@ -234,6 +234,21 @@ function App() {
   const handleSaveNewSchedule = async (formData) => {
     try {
       console.log("保存するデータ:", formData);
+      
+      // 出発日と帰着日から予約日数を計算
+      let span = 1;
+      if (formData.departureDate && formData.returnDate) {
+        const depDate = new Date(formData.departureDate);
+        const retDate = new Date(formData.returnDate);
+        const diffTime = Math.abs(retDate - depDate);
+        span = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+        
+        console.log(`出発日と帰着日から計算された予約日数: ${span}日`);
+        
+        // formDataのspanを上書き
+        formData.span = span;
+      }
+      
       await addSchedule(formData);
       
       // データを再取得
@@ -276,7 +291,7 @@ function App() {
                 travelAgency: item.contactPerson || '',
                 price: item.price || '',
                 driver: item.contactInfo || '',
-                memo: `${item.busType || ''}${item.hasSupportSeat ? '・補助席あり' : ''}${item.memo ? '・' + item.memo : ''}`,
+                memo: `${item.busType || ''}${item.memo ? '・' + item.memo : ''}`,
               }
             };
           })
@@ -342,7 +357,7 @@ function App() {
                 travelAgency: item.contactPerson || '',
                 price: item.price || '',
                 driver: item.contactInfo || '',
-                memo: `${item.busType || ''}${item.hasSupportSeat ? '・補助席あり' : ''}${item.memo ? '・' + item.memo : ''}`,
+                memo: `${item.busType || ''}${item.memo ? '・' + item.memo : ''}`,
               }
             };
           })
