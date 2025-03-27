@@ -105,6 +105,14 @@ function App() {
                 day = 1;
               }
               
+              // 予約日数のバリデーション（最大31日まで）
+              let span = parseInt(item.span) || 1;
+              if (isNaN(span) || span < 1) {
+                span = 1;
+              } else if (span > 31) {
+                span = 31;
+              }
+              
               // 年月の取得（現在の年月を使用）
               const currentYear = new Date().getFullYear();
               const currentMonth = new Date().getMonth() + 1;
@@ -123,7 +131,7 @@ function App() {
               return {
                 id: item.id,
                 day: day,
-                span: parseInt(item.span) || 1, // spanがない場合のデフォルト値
+                span: span, // 検証済みの予約日数
                 content: {
                   orderDate: item.orderDate || '',
                   departureDate: departureDateStr,
@@ -242,6 +250,14 @@ function App() {
               day = 1;
             }
             
+            // 予約日数のバリデーション
+            let span = parseInt(item.span) || 1;
+            if (isNaN(span) || span < 1) {
+              span = 1;
+            } else if (span > 31) {
+              span = 31;
+            }
+            
             // 日付情報のフォーマット
             let departureDateStr = '';
             if (item.departureDate && typeof item.departureDate.toDate === 'function') {
@@ -251,7 +267,7 @@ function App() {
             return {
               id: item.id,
               day: day,
-              span: parseInt(item.span) || 1,
+              span: span,
               content: {
                 orderDate: item.orderDate || '',
                 departureDate: departureDateStr,
@@ -300,6 +316,14 @@ function App() {
               day = 1;
             }
             
+            // 予約日数のバリデーション
+            let span = parseInt(item.span) || 1;
+            if (isNaN(span) || span < 1) {
+              span = 1;
+            } else if (span > 31) {
+              span = 31;
+            }
+            
             // 日付情報のフォーマット
             let departureDateStr = '';
             if (item.departureDate && typeof item.departureDate.toDate === 'function') {
@@ -309,7 +333,7 @@ function App() {
             return {
               id: item.id,
               day: day,
-              span: parseInt(item.span) || 1,
+              span: span,
               content: {
                 orderDate: item.orderDate || '',
                 departureDate: departureDateStr,
@@ -420,10 +444,14 @@ function App() {
                       
                       if (matched) {
                         // 予約がある場合
+                        // 日数が残り日数を超える場合は調整（月末までに収める）
+                        const remainingDays = 31 - day + 1; // その日から月末までの残り日数
+                        const adjustedSpan = Math.min(matched.span, remainingDays); // 月末を超えないように調整
+                        
                         return (
                           <td 
                             key={day} 
-                            colSpan={matched.span}
+                            colSpan={adjustedSpan} // 修正：調整後のspanを使用
                             className="schedule-cell day-col"
                             onClick={() => handleScheduleCellClick(bus.busName, matched)}
                           >
@@ -441,16 +469,29 @@ function App() {
                           </td>
                         );
                       } else {
-                        // 予約がない場合（空きセル）
-                        return (
-                          <td 
-                            key={day}
-                            className="empty-cell day-col"
-                            onClick={() => handleEmptyCellClick(bus.busName, day)}
-                          >
-                            <div className="cell-content">空き</div>
-                          </td>
-                        );
+                        // この日が予約済みセルの内部（colSpanでカバーされる日）かどうかを確認
+                        // 以前の日から予約が継続中かチェック
+                        const isPartOfPreviousBooking = bus.schedule.some(item => {
+                          const startDay = item.day;
+                          const endDay = startDay + Math.min(item.span, 32 - startDay) - 1;
+                          return day > startDay && day <= endDay;
+                        });
+                        
+                        // 継続中の予約でなければ空きセルを表示
+                        if (!isPartOfPreviousBooking) {
+                          return (
+                            <td 
+                              key={day}
+                              className="empty-cell day-col"
+                              onClick={() => handleEmptyCellClick(bus.busName, day)}
+                            >
+                              <div className="cell-content">空き</div>
+                            </td>
+                          );
+                        }
+                        
+                        // 継続中の予約はnullを返す（colSpanでカバーされるため表示しない）
+                        return null;
                       }
                     })}
                   </tr>
