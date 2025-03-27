@@ -502,7 +502,7 @@ function App() {
         )}
         
         <div className="footer-info">
-          <p>※セルをクリックすると予約の登録・編集ができます</p>
+          <p>※セルをクリックすると予約の登録・編集ができます！</p>
           <p>最終更新: {format(new Date(), 'yyyy年MM月dd日 HH:mm', { locale: ja })}</p>
         </div>
       </div>
