@@ -48,20 +48,24 @@ function App() {
                   const matched = bus.schedule.find((item) => item.day === dayIndex);
                   if (matched) {
                     cells.push(
-                      <td key={dayIndex} colSpan={matched.span} className="cell-content">
-                        <div>受注日: {matched.content.orderDate}</div>
-                        <div>団体名: {matched.content.groupName}</div>
-                        <div>方面情報: {matched.content.areaInfo}</div>
-                        <div>旅行会社: {matched.content.travelAgency}</div>
-                        <div>金額: {matched.content.price}</div>
-                        <div>ドライバー: {matched.content.driver}</div>
-                        <div>メモ: {matched.content.memo}</div>
+                      <td key={dayIndex} colSpan={matched.span}>
+                        <div className="cell-content">
+                          <div title={matched.content.orderDate}>{matched.content.orderDate}</div>
+                          <div title={matched.content.groupName}>{matched.content.groupName}</div>
+                          <div title={matched.content.areaInfo}>{matched.content.areaInfo}</div>
+                          <div title={matched.content.travelAgency}>{matched.content.travelAgency}</div>
+                          <div title={matched.content.price}>{matched.content.price}</div>
+                          <div title={matched.content.driver}>{matched.content.driver}</div>
+                          <div title={matched.content.memo}>{matched.content.memo}</div>
+                        </div>
                       </td>
                     );
                     dayIndex += matched.span;
                   } else {
                     cells.push(
-                      <td key={dayIndex} className="cell-content">空き</td>
+                      <td key={dayIndex}>
+                        <div className="cell-content">空き</div>
+                      </td>
                     );
                     dayIndex++;
                   }
