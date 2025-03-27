@@ -86,7 +86,11 @@ const EditScheduleForm = ({ schedule, onUpdate, onCancel }) => {
       };
       
       console.log('フォームデータを設定:', updatedFormData);
-      setFormData(updatedFormData);
+      
+      // 非同期更新でタイミングの問題を回避
+      setTimeout(() => {
+        setFormData(updatedFormData);
+      }, 0);
     }
   }, [schedule]);
 
@@ -98,11 +102,21 @@ const EditScheduleForm = ({ schedule, onUpdate, onCancel }) => {
     if (departureDateRef.current) {
       console.log('出発日入力要素:', departureDateRef.current);
       console.log('出発日入力値:', departureDateRef.current.value);
+      
+      // 値が設定されていない場合は強制的に設定
+      if (formData.departureDate && departureDateRef.current.value !== formData.departureDate) {
+        departureDateRef.current.value = formData.departureDate;
+      }
     }
     
     if (returnDateRef.current) {
       console.log('帰着日入力要素:', returnDateRef.current);
       console.log('帰着日入力値:', returnDateRef.current.value);
+      
+      // 値が設定されていない場合は強制的に設定
+      if (formData.returnDate && returnDateRef.current.value !== formData.returnDate) {
+        returnDateRef.current.value = formData.returnDate;
+      }
     }
   }, [formData]);
 
@@ -167,9 +181,31 @@ const EditScheduleForm = ({ schedule, onUpdate, onCancel }) => {
     }
   };
 
+  // 日付入力フィールドを直接クリックした時のハンドラ
+  const handleDateClick = (e) => {
+    console.log(`日付入力フィールド ${e.target.name} がクリックされました`);
+    // 強制的にフォーカス
+    e.target.focus();
+    
+    // カレンダーを表示させるためにクリックイベントをシミュレート
+    try {
+      e.target.showPicker();
+    } catch (err) {
+      console.error("カレンダーピッカーの表示に失敗しました:", err);
+    }
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log('更新するデータ:', formData);
+    
+    // 入力要素から直接値を取得して更新
+    if (departureDateRef.current && departureDateRef.current.value) {
+      formData.departureDate = departureDateRef.current.value;
+    }
+    
+    if (returnDateRef.current && returnDateRef.current.value) {
+      formData.returnDate = returnDateRef.current.value;
+    }
     
     // 出発日と帰着日から予約日数を計算
     let span = 1;
@@ -181,6 +217,8 @@ const EditScheduleForm = ({ schedule, onUpdate, onCancel }) => {
       
       console.log(`出発日と帰着日から計算された予約日数: ${span}日`);
     }
+    
+    console.log('更新するデータ:', formData);
     
     // 更新データを作成
     const updatedData = {
@@ -230,6 +268,7 @@ const EditScheduleForm = ({ schedule, onUpdate, onCancel }) => {
               name="departureDate"
               value={formData.departureDate}
               onChange={handleDepartureDateChange}
+              onClick={handleDateClick}
               ref={departureDateRef}
               required
             />
@@ -243,6 +282,7 @@ const EditScheduleForm = ({ schedule, onUpdate, onCancel }) => {
               name="returnDate"
               value={formData.returnDate}
               onChange={handleReturnDateChange}
+              onClick={handleDateClick}
               ref={returnDateRef}
             />
           </div>
@@ -368,6 +408,8 @@ const EditScheduleForm = ({ schedule, onUpdate, onCancel }) => {
         <p>帰着日: {formData.returnDate}</p>
         <p>車種: {formData.busType}</p>
         <p>計算された予約日数: {formData.span}日</p>
+        <p>出発日入力値 (ref): {departureDateRef.current?.value || '未設定'}</p>
+        <p>帰着日入力値 (ref): {returnDateRef.current?.value || '未設定'}</p>
       </div>
     </div>
   );

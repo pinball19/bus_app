@@ -72,13 +72,15 @@ const NewScheduleForm = ({ selectedCell, onSave, onCancel }) => {
       // 情報をフォームにセット
       console.log(`フォームを更新します: 出発日=${departureDateStr}, バスタイプ=${busType}`);
       
-      // 新しいフォームデータを作成して設定
-      setFormData(prev => ({
-        ...prev,
-        departureDate: departureDateStr,
-        returnDate: returnDateStr,
-        busType: busType
-      }));
+      // timeoutを使用して非同期更新
+      setTimeout(() => {
+        setFormData(prev => ({
+          ...prev,
+          departureDate: departureDateStr,
+          returnDate: returnDateStr,
+          busType: busType
+        }));
+      }, 0);
     }
   }, [selectedCell]);
 
@@ -90,11 +92,21 @@ const NewScheduleForm = ({ selectedCell, onSave, onCancel }) => {
     if (departureDateRef.current) {
       console.log('出発日入力要素:', departureDateRef.current);
       console.log('出発日入力値:', departureDateRef.current.value);
+      
+      // 値が設定されていない場合は強制的に設定
+      if (formData.departureDate && departureDateRef.current.value !== formData.departureDate) {
+        departureDateRef.current.value = formData.departureDate;
+      }
     }
     
     if (returnDateRef.current) {
       console.log('帰着日入力要素:', returnDateRef.current);
       console.log('帰着日入力値:', returnDateRef.current.value);
+      
+      // 値が設定されていない場合は強制的に設定
+      if (formData.returnDate && returnDateRef.current.value !== formData.returnDate) {
+        returnDateRef.current.value = formData.returnDate;
+      }
     }
   }, [formData]);
 
@@ -164,6 +176,15 @@ const NewScheduleForm = ({ selectedCell, onSave, onCancel }) => {
       return;
     }
     
+    // 入力要素から直接値を取得して更新
+    if (departureDateRef.current && departureDateRef.current.value) {
+      formData.departureDate = departureDateRef.current.value;
+    }
+    
+    if (returnDateRef.current && returnDateRef.current.value) {
+      formData.returnDate = returnDateRef.current.value;
+    }
+    
     console.log('送信されるデータ:', formData);
     
     // セル情報と入力データを結合
@@ -174,6 +195,20 @@ const NewScheduleForm = ({ selectedCell, onSave, onCancel }) => {
     };
     
     onSave(scheduleData);
+  };
+
+  // 日付入力フィールドを直接クリックした時のハンドラ
+  const handleDateClick = (e) => {
+    console.log(`日付入力フィールド ${e.target.name} がクリックされました`);
+    // 強制的にフォーカス
+    e.target.focus();
+    
+    // カレンダーを表示させるためにクリックイベントをシミュレート
+    try {
+      e.target.showPicker();
+    } catch (err) {
+      console.error("カレンダーピッカーの表示に失敗しました:", err);
+    }
   };
 
   return (
@@ -207,6 +242,7 @@ const NewScheduleForm = ({ selectedCell, onSave, onCancel }) => {
               name="departureDate"
               value={formData.departureDate}
               onChange={handleDepartureDateChange}
+              onClick={handleDateClick}
               ref={departureDateRef}
               required
             />
@@ -220,6 +256,7 @@ const NewScheduleForm = ({ selectedCell, onSave, onCancel }) => {
               name="returnDate"
               value={formData.returnDate}
               onChange={handleChange}
+              onClick={handleDateClick}
               ref={returnDateRef}
             />
           </div>
@@ -344,6 +381,8 @@ const NewScheduleForm = ({ selectedCell, onSave, onCancel }) => {
         <p>帰着日: {formData.returnDate}</p>
         <p>車種: {formData.busType}</p>
         <p>計算された予約日数: {formData.span}日</p>
+        <p>出発日入力値 (ref): {departureDateRef.current?.value || '未設定'}</p>
+        <p>帰着日入力値 (ref): {returnDateRef.current?.value || '未設定'}</p>
       </div>
     </div>
   );
