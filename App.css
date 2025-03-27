@@ -1,0 +1,78 @@
+/* App.css 全体コード */
+
+/* ベースレイアウト調整 */
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100%;
+  background-color: #fdfae6; /* 背景を全体に合わせる */
+  overflow-x: auto;
+  overflow-y: auto;
+  font-family: sans-serif;
+  color: #333;
+}
+
+#root {
+  width: 100%;
+  min-height: 100%;
+}
+
+/* コンテナ */
+.container {
+  padding: 2rem;
+  background-color: #fdfbe7;
+  min-width: fit-content;  /* 中身の幅に合わせて拡張 */
+  max-width: 100%;         /* 横幅は100%に制限 */
+}
+
+/* タイトル */
+h1 {
+  font-size: 2rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #333;
+}
+
+/* 表全体 */
+.schedule-table {
+  border-collapse: collapse;
+  width: 100%;
+  table-layout: fixed;
+}
+
+/* ヘッダー */
+.schedule-table thead th {
+  background-color: #ddd;
+  padding: 8px;
+  text-align: center;
+  border: 1px solid #ccc;
+  font-weight: bold;
+  color: #333;
+}
+
+/* セル全体 */
+.schedule-table td {
+  border: 1px solid #ccc;
+  vertical-align: top;
+  height: 100px;
+  padding: 2px 4px;
+  background-color: #fffde4;  /* セルの薄い背景色 */
+  word-break: break-word;
+  font-size: 12px;
+  color: #333;
+}
+
+/* セルの内容 */
+.cell-content {
+  white-space: normal;       /* 折り返しを許可 */
+  overflow-wrap: break-word; /* 長い単語の折り返し */
+  text-align: center;        /* テキスト中央揃え */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  flex-direction: column;    /* 縦に積むレイアウト */
+}
