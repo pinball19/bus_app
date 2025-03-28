@@ -14,8 +14,23 @@ import {
 import { format } from 'date-fns';
 import ja from 'date-fns/locale/ja';
 
-// 日数の配列生成
-const daysInMonth = Array.from({ length: 31 }, (_, i) => i + 1);
+// 指定された年月の日数を取得する関数
+const getDaysInMonth = (year, month) => {
+  // 翌月の0日目（つまり前月の最終日）を指定
+  return new Date(year, month, 0).getDate();
+};
+
+// 指定した年月日の曜日を取得する関数
+const getWeekday = (year, month, day) => {
+  const date = new Date(year, month - 1, day);
+  const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+  return {
+    text: weekdays[date.getDay()],
+    isWeekend: date.getDay() === 0 || date.getDay() === 6, // 土日判定
+    isSunday: date.getDay() === 0, // 日曜判定
+    isSaturday: date.getDay() === 6 // 土曜判定
+  };
+};
 
 // CSVダウンロード関数
 const downloadCSV = (data, filename) => {
@@ -29,7 +44,7 @@ const downloadCSV = (data, filename) => {
       headers.map(header => 
         // カンマを含む場合はダブルクォートで囲む
         String(row[header] || '').includes(',') 
-          ? `"${row[header]}"` 
+          ? `"${row[header]}"`
           : row[header]
       ).join(',')
     )
@@ -68,6 +83,12 @@ function App() {
     "マイクロ1", "マイクロ2", "小型1", "小型2", "中型1", "大型1"
   ]);
   const [contactPersons, setContactPersons] = useState([]);
+  
+  // 現在選択されている月の日数を計算
+  const daysInSelectedMonth = getDaysInMonth(currentYear, currentMonth);
+  
+  // 日数の配列を生成（選択した月の実際の日数に基づく）
+  const daysArray = Array.from({ length: daysInSelectedMonth }, (_, i) => i + 1);
 
   // 初回読み込み時とフィルター変更時にデータを取得
   useEffect(() => {
@@ -100,22 +121,29 @@ function App() {
             schedule: busSchedules.map(item => {
               // dayフィールドの値がおかしい場合の対処
               let day = parseInt(item.day);
-              if (isNaN(day) || day < 1 || day > 31) {
+              if (isNaN(day) || day < 1) {
                 console.warn(`無効な日付 (${item.day}) を検出したため、1日に修正しました`);
                 day = 1;
+              } else if (day > getDaysInMonth(currentYear, currentMonth)) {
+                // 選択された月の最終日を超える場合、その月の最終日に設定
+                console.warn(`日付 ${day} が${currentMonth}月の最終日を超えています。最終日に設定します。`);
+                day = getDaysInMonth(currentYear, currentMonth);
               }
               
-              // 予約日数のバリデーション（最大31日まで）
+              // 予約日数のバリデーション（選択した月の最終日までに収める）
               let span = parseInt(item.span) || 1;
               if (isNaN(span) || span < 1) {
                 span = 1;
-              } else if (span > 31) {
-                span = 31;
               }
               
-              // 年月の取得（現在の年月を使用）
-              const currentYear = new Date().getFullYear();
-              const currentMonth = new Date().getMonth() + 1;
+              // 月末までの残り日数
+              const daysLeftInMonth = getDaysInMonth(currentYear, currentMonth) - day + 1;
+              
+              // spanが月末を超える場合は調整
+              if (span > daysLeftInMonth) {
+                console.warn(`予約期間 ${span}日が月末を超えるため、${daysLeftInMonth}日に調整します。`);
+                span = daysLeftInMonth;
+              }
               
               // 日付情報のフォーマット
               let departureDateStr = '';
@@ -187,13 +215,16 @@ function App() {
 
   // 空白セルクリック - 新規フォーム表示
   const handleEmptyCellClick = (busName, day) => {
-    console.log(`空白セルがクリックされました: バス=${busName}, 日付=${day}`);
+    console.log(`空白セルがクリックされました: バス=${busName}, 日付=${day}, 月=${currentMonth}, 年=${currentYear}`);
     
     // 日付のバリデーション
     let validDay = parseInt(day);
-    if (isNaN(validDay) || validDay < 1 || validDay > 31) {
+    if (isNaN(validDay) || validDay < 1) {
       console.warn(`無効な日付 (${day}) を1日に修正します`);
       validDay = 1;
+    } else if (validDay > getDaysInMonth(currentYear, currentMonth)) {
+      // 月の最終日を超える場合は修正
+      validDay = getDaysInMonth(currentYear, currentMonth);
     }
     
     // バス名も検証
@@ -202,7 +233,13 @@ function App() {
       busName = 'マイクロ1'; // デフォルト値
     }
     
-    const cellInfo = { busName, day: validDay };
+    // 現在表示中の年月情報も一緒に渡す
+    const cellInfo = { 
+      busName, 
+      day: validDay,
+      month: currentMonth,
+      year: currentYear
+    };
     console.log('NewScheduleFormに渡すセル情報:', cellInfo);
     
     setSelectedCell(cellInfo);
@@ -233,6 +270,10 @@ function App() {
   // 新規予約の保存処理
   const handleSaveNewSchedule = async (formData) => {
     try {
+      // 現在選択されている月と年の情報を追加
+      formData.month = currentMonth;
+      formData.year = currentYear;
+      
       console.log("保存するデータ:", formData);
       
       // 出発日と帰着日から予約日数を計算
@@ -249,6 +290,13 @@ function App() {
         formData.span = span;
       }
       
+      // 月末までの日数で予約日数を調整
+      const daysLeftInMonth = getDaysInMonth(currentYear, currentMonth) - formData.day + 1;
+      if (formData.span > daysLeftInMonth) {
+        console.warn(`予約期間 ${formData.span}日が月末を超えるため、${daysLeftInMonth}日に調整します。`);
+        formData.span = daysLeftInMonth;
+      }
+      
       await addSchedule(formData);
       
       // データを再取得
@@ -261,16 +309,25 @@ function App() {
           busName,
           schedule: busSchedules.map(item => {
             let day = parseInt(item.day);
-            if (isNaN(day) || day < 1 || day > 31) {
+            if (isNaN(day) || day < 1) {
               day = 1;
+            } else if (day > getDaysInMonth(currentYear, currentMonth)) {
+              // 月の最終日を超える場合は修正
+              day = getDaysInMonth(currentYear, currentMonth);
             }
             
             // 予約日数のバリデーション
             let span = parseInt(item.span) || 1;
             if (isNaN(span) || span < 1) {
               span = 1;
-            } else if (span > 31) {
-              span = 31;
+            }
+            
+            // 月末までの残り日数
+            const daysLeftInMonth = getDaysInMonth(currentYear, currentMonth) - day + 1;
+            
+            // spanが月末を超える場合は調整
+            if (span > daysLeftInMonth) {
+              span = daysLeftInMonth;
             }
             
             // 日付情報のフォーマット
@@ -327,16 +384,25 @@ function App() {
           busName,
           schedule: busSchedules.map(item => {
             let day = parseInt(item.day);
-            if (isNaN(day) || day < 1 || day > 31) {
+            if (isNaN(day) || day < 1) {
               day = 1;
+            } else if (day > getDaysInMonth(currentYear, currentMonth)) {
+              // 月の最終日を超える場合は修正
+              day = getDaysInMonth(currentYear, currentMonth);
             }
             
             // 予約日数のバリデーション
             let span = parseInt(item.span) || 1;
             if (isNaN(span) || span < 1) {
               span = 1;
-            } else if (span > 31) {
-              span = 31;
+            }
+            
+            // 月末までの残り日数
+            const daysLeftInMonth = getDaysInMonth(currentYear, currentMonth) - day + 1;
+            
+            // spanが月末を超える場合は調整
+            if (span > daysLeftInMonth) {
+              span = daysLeftInMonth;
             }
             
             // 日付情報のフォーマット
@@ -443,9 +509,25 @@ function App() {
             <table className="schedule-table">
               <thead>
                 <tr>
-                  <th className="bus-name-col">バス名</th>
-                  {daysInMonth.map((day) => (
-                    <th key={day} className="day-col">{day}</th>
+                  <th className="bus-name-col" rowSpan="2">バス名</th>
+                  {daysArray.map((day) => {
+                    const weekday = getWeekday(currentYear, currentMonth, day);
+                    return (
+                      <th 
+                        key={`weekday-${day}`} 
+                        className="day-col" 
+                        style={{ 
+                          color: weekday.isSunday ? '#ff0000' : weekday.isSaturday ? '#0000ff' : '#333'
+                        }}
+                      >
+                        {weekday.text}
+                      </th>
+                    );
+                  })}
+                </tr>
+                <tr>
+                  {daysArray.map((day) => (
+                    <th key={`day-${day}`} className="day-col">{day}</th>
                   ))}
                 </tr>
               </thead>
@@ -453,20 +535,20 @@ function App() {
                 {scheduleData.map((bus, rowIndex) => (
                   <tr key={rowIndex}>
                     <td className="bus-name-col">{bus.busName}</td>
-                    {daysInMonth.map((day) => {
+                    {daysArray.map((day) => {
                       // この日に予約があるか確認
                       const matched = bus.schedule.find((item) => item.day === day);
                       
                       if (matched) {
                         // 予約がある場合
                         // 日数が残り日数を超える場合は調整（月末までに収める）
-                        const remainingDays = 31 - day + 1; // その日から月末までの残り日数
-                        const adjustedSpan = Math.min(matched.span, remainingDays); // 月末を超えないように調整
+                        const daysLeftInMonth = getDaysInMonth(currentYear, currentMonth) - day + 1;
+                        const adjustedSpan = Math.min(matched.span, daysLeftInMonth);
                         
                         return (
                           <td 
                             key={day} 
-                            colSpan={adjustedSpan} // 修正：調整後のspanを使用
+                            colSpan={adjustedSpan}
                             className="schedule-cell day-col"
                             onClick={() => handleScheduleCellClick(bus.busName, matched)}
                           >
@@ -484,15 +566,13 @@ function App() {
                           </td>
                         );
                       } else {
-                        // この日が予約済みセルの内部（colSpanでカバーされる日）かどうかを確認
-                        // 以前の日から予約が継続中かチェック
+                        // この日が予約済みセルの内部かどうかをチェック
                         const isPartOfPreviousBooking = bus.schedule.some(item => {
                           const startDay = item.day;
-                          const endDay = startDay + Math.min(item.span, 32 - startDay) - 1;
+                          const endDay = startDay + Math.min(item.span, getDaysInMonth(currentYear, currentMonth) - startDay + 1) - 1;
                           return day > startDay && day <= endDay;
                         });
                         
-                        // 継続中の予約でなければ空きセルを表示
                         if (!isPartOfPreviousBooking) {
                           return (
                             <td 
@@ -505,7 +585,6 @@ function App() {
                           );
                         }
                         
-                        // 継続中の予約はnullを返す（colSpanでカバーされるため表示しない）
                         return null;
                       }
                     })}
