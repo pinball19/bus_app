@@ -78,12 +78,14 @@ const NewScheduleForm = ({ selectedCell, onSave, onCancel }) => {
         console.warn(`無効な日付 (${selectedCell.day}) を使用しています`);
       }
       
-      // 現在の年月を取得
-      const currentYear = today.getFullYear();
-      const currentMonth = today.getMonth() + 1;
+      // セルから年月を取得（選択されている月を使用）
+      const selectedYear = selectedCell.year || today.getFullYear();
+      const selectedMonth = selectedCell.month || today.getMonth() + 1;
+      
+      console.log(`選択された年月: ${selectedYear}年${selectedMonth}月${validDay}日`);
       
       // 日付文字列を作成
-      const departureDateStr = formatDateForInput(currentYear, currentMonth, validDay);
+      const departureDateStr = formatDateForInput(selectedYear, selectedMonth, validDay);
       console.log(`選択した日付から生成した出発日: ${departureDateStr}`);
       
       // バスタイプの抽出
@@ -140,7 +142,7 @@ const NewScheduleForm = ({ selectedCell, onSave, onCancel }) => {
 
   // 入力フィールドの変更を処理
   const handleChange = (e) => {
-    const { name, value, type } = e.target;
+    const { name, value } = e.target;
     
     // 変更内容をログに出力（デバッグ用）
     console.log(`フィールド ${name} の値が変更されました: ${value}`);
@@ -220,6 +222,8 @@ const NewScheduleForm = ({ selectedCell, onSave, onCancel }) => {
       ...formData,
       busName: selectedCell.busName,
       day: selectedCell.day,
+      month: selectedCell.month,  // 選択された月
+      year: selectedCell.year     // 選択された年
     };
     
     onSave(scheduleData);
@@ -244,7 +248,7 @@ const NewScheduleForm = ({ selectedCell, onSave, onCancel }) => {
       <div className="form-header">
         <h2 className="form-title">新規予約登録</h2>
         <div>
-          {selectedCell?.busName} / {selectedCell?.day}日
+          {selectedCell?.busName} / {selectedCell?.year}年{selectedCell?.month}月{selectedCell?.day}日
         </div>
       </div>
 
@@ -424,6 +428,7 @@ const NewScheduleForm = ({ selectedCell, onSave, onCancel }) => {
         <p>帰着日: {formData.returnDate} ({getWeekday(formData.returnDate)}曜日)</p>
         <p>車種: {formData.busType}</p>
         <p>計算された予約日数: {formData.span}日</p>
+        <p>選択された年月: {selectedCell?.year}年{selectedCell?.month}月{selectedCell?.day}日</p>
         <p>出発日入力値 (ref): {departureDateRef.current?.value || '未設定'}</p>
         <p>帰着日入力値 (ref): {returnDateRef.current?.value || '未設定'}</p>
       </div>

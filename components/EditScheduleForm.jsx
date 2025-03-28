@@ -74,13 +74,40 @@ const EditScheduleForm = ({ schedule, onUpdate, onCancel }) => {
         validDay = 1;
       }
       
-      // 出発日と帰着日の計算
-      const today = new Date();
-      const currentYear = today.getFullYear();
-      const currentMonth = today.getMonth() + 1;
+      // 現在表示中の年月を取得（Firestoreから取得した方が良いが、UI上の年月を使用）
+      const departureDateParts = content.departureDate ? content.departureDate.split('/') : [];
+      let departureYear, departureMonth;
       
-      // 出発日（セルがクリックされた日付）- 有効な日付に修正
-      const departureDateStr = formatDateForInput(currentYear, currentMonth, validDay);
+      if (departureDateParts.length >= 2) {
+        departureYear = parseInt(departureDateParts[0]);
+        departureMonth = parseInt(departureDateParts[1]);
+      } else {
+        // 日付情報がない場合は現在の年月を使用
+        const today = new Date();
+        departureYear = today.getFullYear();
+        departureMonth = today.getMonth() + 1;
+      }
+      
+      console.log(`出発日から抽出した年月: ${departureYear}年${departureMonth}月`);
+      
+      // 出発日（予約データから取得）
+      let departureDateStr = '';
+      if (content.departureDate) {
+        // 既存の日付情報をパース
+        const parts = content.departureDate.split('/');
+        if (parts.length === 3) {
+          const year = parseInt(parts[0]);
+          const month = parseInt(parts[1]);
+          const day = parseInt(parts[2]);
+          departureDateStr = formatDateForInput(year, month, day);
+        } else {
+          // フォーマットが不正な場合はセルの日付情報を使用
+          departureDateStr = formatDateForInput(departureYear, departureMonth, validDay);
+        }
+      } else {
+        // 日付情報がない場合はセルの日付情報を使用
+        departureDateStr = formatDateForInput(departureYear, departureMonth, validDay);
+      }
       
       // 帰着日（出発日 + span - 1）
       const depDate = new Date(departureDateStr);
@@ -111,6 +138,9 @@ const EditScheduleForm = ({ schedule, onUpdate, onCancel }) => {
         busType: busType,
         memo: content.memo || '',
         span: span || 1,
+        // 年月情報を追加
+        year: departureYear,
+        month: departureMonth
       };
       
       console.log('フォームデータを設定:', updatedFormData);

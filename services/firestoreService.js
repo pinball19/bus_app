@@ -16,11 +16,33 @@ import { db } from "../firebase";
 // スケジュールコレクション参照
 const schedulesRef = collection(db, "schedules");
 
+// 指定された年月の日数を取得する関数
+const getDaysInMonth = (year, month) => {
+  return new Date(year, month, 0).getDate();
+};
+
 // スケジュールデータを取得
 export const getSchedules = async (month, year) => {
   try {
-    // 日付条件を一時的に無効化してすべてのデータを取得
-    const q = query(schedulesRef);
+    console.log(`${year}年${month}月のスケジュールを取得します`);
+    
+    // 指定された月の最初の日
+    const startDate = new Date(year, month - 1, 1);
+    // 指定された月の最後の日
+    const endDate = new Date(year, month, 0);
+    
+    // FirestoreのTimestamp形式に変換
+    const startTimestamp = Timestamp.fromDate(startDate);
+    const endTimestamp = Timestamp.fromDate(new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23, 59, 59));
+    
+    console.log(`検索期間: ${startDate.toISOString()} から ${endDate.toISOString()}`);
+    
+    // 日付範囲でクエリを実行
+    const q = query(
+      schedulesRef,
+      where("departureDate", ">=", startTimestamp),
+      where("departureDate", "<=", endTimestamp)
+    );
     
     const querySnapshot = await getDocs(q);
     const schedules = [];
@@ -33,7 +55,7 @@ export const getSchedules = async (month, year) => {
       });
     });
     
-    console.log("取得したスケジュール:", schedules); // 全データをログ出力
+    console.log(`${year}年${month}月のスケジュール数:`, schedules.length);
     return schedules;
   } catch (error) {
     console.error("Error getting schedules: ", error);
@@ -64,24 +86,42 @@ export const addSchedule = async (scheduleData) => {
     }
     
     // カレンダー表示用の日付処理（dayフィールドから）
-    const year = new Date().getFullYear();
-    const month = new Date().getMonth() + 1;
+    // 選択されている年月を使用
+    const year = scheduleData.year || new Date().getFullYear();
+    const month = scheduleData.month || new Date().getMonth() + 1;
     const day = scheduleData.day;
-    const scheduleDate = new Date(year, month - 1, day);
+    
+    // 日付のバリデーション
+    let validDay = parseInt(day);
+    if (isNaN(validDay) || validDay < 1) {
+      validDay = 1;
+    } else if (validDay > getDaysInMonth(year, month)) {
+      // 月の最終日を超える場合は修正
+      validDay = getDaysInMonth(year, month);
+    }
+    
+    const scheduleDate = new Date(year, month - 1, validDay);
     dateTimestamp = Timestamp.fromDate(scheduleDate);
     
     // 予約日数のバリデーション
     let span = Number(scheduleData.span);
     if (isNaN(span) || span < 1) {
       span = 1;
-    } else if (span > 31) {
-      span = 31;
+    }
+    
+    // 月末までの残り日数
+    const daysLeftInMonth = getDaysInMonth(year, month) - validDay + 1;
+    
+    // spanが月末を超える場合は調整
+    if (span > daysLeftInMonth) {
+      console.warn(`予約期間 ${span}日が月末を超えるため、${daysLeftInMonth}日に調整します。`);
+      span = daysLeftInMonth;
     }
     
     const formattedData = {
       busName: scheduleData.busName,
       date: dateTimestamp,
-      day: scheduleData.day,
+      day: validDay,
       span: span,
       orderDate: scheduleData.orderDate,
       departureDate: departureDateTimestamp,
@@ -93,7 +133,6 @@ export const addSchedule = async (scheduleData) => {
       contactPerson: scheduleData.contactPerson,
       contactInfo: scheduleData.contactInfo,
       busType: scheduleData.busType,
-      // hasSupportSeatフィールドを削除
       memo: scheduleData.memo,
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now()
@@ -127,8 +166,37 @@ export const updateSchedule = async (scheduleId, scheduleData) => {
       updatedData.returnDate = Timestamp.fromDate(returnDate);
     }
     
+    // 日付のバリデーション
+    if (updatedData.day) {
+      let validDay = parseInt(updatedData.day);
+      const year = updatedData.year || new Date().getFullYear();
+      const month = updatedData.month || new Date().getMonth() + 1;
+      
+      if (isNaN(validDay) || validDay < 1) {
+        validDay = 1;
+      } else if (validDay > getDaysInMonth(year, month)) {
+        // 月の最終日を超える場合は修正
+        validDay = getDaysInMonth(year, month);
+      }
+      
+      updatedData.day = validDay;
+    }
+    
     // 数値型の確保
     updatedData.span = Number(scheduleData.span);
+    
+    // 予約日数のバリデーション
+    if (updatedData.day && updatedData.span) {
+      const year = updatedData.year || new Date().getFullYear();
+      const month = updatedData.month || new Date().getMonth() + 1;
+      const daysLeftInMonth = getDaysInMonth(year, month) - updatedData.day + 1;
+      
+      if (updatedData.span > daysLeftInMonth) {
+        console.warn(`予約期間 ${updatedData.span}日が月末を超えるため、${daysLeftInMonth}日に調整します。`);
+        updatedData.span = daysLeftInMonth;
+      }
+    }
+    
     updatedData.updatedAt = Timestamp.now();
     
     // createdAtは更新しない
@@ -158,9 +226,20 @@ export const deleteSchedule = async (scheduleId) => {
 // バス別のスケジュールを取得
 export const getSchedulesByBus = async (busName, month, year) => {
   try {
+    // 指定された月の最初の日
+    const startDate = new Date(year, month - 1, 1);
+    // 指定された月の最後の日
+    const endDate = new Date(year, month, 0);
+    
+    // FirestoreのTimestamp形式に変換
+    const startTimestamp = Timestamp.fromDate(startDate);
+    const endTimestamp = Timestamp.fromDate(new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23, 59, 59));
+    
     const q = query(
       schedulesRef,
-      where("busName", "==", busName)
+      where("busName", "==", busName),
+      where("departureDate", ">=", startTimestamp),
+      where("departureDate", "<=", endTimestamp)
     );
     
     const querySnapshot = await getDocs(q);
@@ -184,9 +263,20 @@ export const getSchedulesByBus = async (busName, month, year) => {
 // 担当者別のスケジュールを取得
 export const getSchedulesByContactPerson = async (contactPerson, month, year) => {
   try {
+    // 指定された月の最初の日
+    const startDate = new Date(year, month - 1, 1);
+    // 指定された月の最後の日
+    const endDate = new Date(year, month, 0);
+    
+    // FirestoreのTimestamp形式に変換
+    const startTimestamp = Timestamp.fromDate(startDate);
+    const endTimestamp = Timestamp.fromDate(new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23, 59, 59));
+    
     const q = query(
       schedulesRef,
-      where("contactPerson", "==", contactPerson)
+      where("contactPerson", "==", contactPerson),
+      where("departureDate", ">=", startTimestamp),
+      where("departureDate", "<=", endTimestamp)
     );
     
     const querySnapshot = await getDocs(q);
@@ -238,7 +328,6 @@ export const getSchedulesForCSV = async (month, year) => {
         担当者: schedule.contactPerson || '',
         連絡先: schedule.contactInfo || '',
         車種: schedule.busType || '',
-        // 補助席フィールドを削除
         備考: schedule.memo || '',
         登録日: schedule.createdAt?.toDate().toLocaleDateString() || '',
         更新日: schedule.updatedAt?.toDate().toLocaleDateString() || ''

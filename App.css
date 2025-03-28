@@ -130,6 +130,12 @@ h1 {
   font-size: 12px;       /* フォントサイズを調整 */
 }
 
+/* 曜日行のスタイル */
+.schedule-table thead tr:first-child th {
+  padding: 4px 2px;      /* 曜日行は少し小さめに */
+  font-size: 11px;
+}
+
 /* セル全体 */
 .schedule-table td {
   border: 1px solid #ccc;
