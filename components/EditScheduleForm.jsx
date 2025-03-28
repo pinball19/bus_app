@@ -10,6 +10,34 @@ const formatDateForInput = (year, month, day) => {
   return `${year}-${formattedMonth}-${formattedDay}`;
 };
 
+// 曜日を取得する関数
+const getWeekday = (dateString) => {
+  if (!dateString) return '';
+  
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return '';
+  
+  // 日本語の曜日
+  const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+  const weekdayIndex = date.getDay();
+  return weekdays[weekdayIndex];
+};
+
+// 曜日の色を取得する関数
+const getWeekdayColor = (dateString) => {
+  if (!dateString) return 'inherit';
+  
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return 'inherit';
+  
+  const weekdayIndex = date.getDay();
+  
+  // 日曜は赤、土曜は青、その他は黒
+  if (weekdayIndex === 0) return '#ff0000'; // 日曜
+  if (weekdayIndex === 6) return '#0000ff'; // 土曜
+  return '#333333'; // 平日
+};
+
 const EditScheduleForm = ({ schedule, onUpdate, onCancel }) => {
   // デバッグ用のref
   const departureDateRef = useRef(null);
@@ -250,41 +278,56 @@ const EditScheduleForm = ({ schedule, onUpdate, onCancel }) => {
       <form onSubmit={handleSubmit}>
         <div className="form-group">
           <label htmlFor="orderDate">受注日</label>
-          <input
-            type="date"
-            id="orderDate"
-            name="orderDate"
-            value={formData.orderDate}
-            onChange={handleChange}
-          />
+          <div className="date-with-weekday">
+            <div className="weekday-display" style={{ color: getWeekdayColor(formData.orderDate) }}>
+              {getWeekday(formData.orderDate)}曜日
+            </div>
+            <input
+              type="date"
+              id="orderDate"
+              name="orderDate"
+              value={formData.orderDate}
+              onChange={handleChange}
+            />
+          </div>
         </div>
 
         <div className="form-row">
           <div className="form-group">
             <label htmlFor="departureDate">出発日</label>
-            <input
-              type="date"
-              id="departureDate"
-              name="departureDate"
-              value={formData.departureDate}
-              onChange={handleDepartureDateChange}
-              onClick={handleDateClick}
-              ref={departureDateRef}
-              required
-            />
+            <div className="date-with-weekday">
+              <div className="weekday-display" style={{ color: getWeekdayColor(formData.departureDate) }}>
+                {getWeekday(formData.departureDate)}曜日
+              </div>
+              <input
+                type="date"
+                id="departureDate"
+                name="departureDate"
+                value={formData.departureDate}
+                onChange={handleDepartureDateChange}
+                onClick={handleDateClick}
+                ref={departureDateRef}
+                required
+              />
+            </div>
           </div>
 
           <div className="form-group">
             <label htmlFor="returnDate">帰着日</label>
-            <input
-              type="date"
-              id="returnDate"
-              name="returnDate"
-              value={formData.returnDate}
-              onChange={handleReturnDateChange}
-              onClick={handleDateClick}
-              ref={returnDateRef}
-            />
+            <div className="date-with-weekday">
+              <div className="weekday-display" style={{ color: getWeekdayColor(formData.returnDate) }}>
+                {getWeekday(formData.returnDate)}曜日
+              </div>
+              <input
+                type="date"
+                id="returnDate"
+                name="returnDate"
+                value={formData.returnDate}
+                onChange={handleReturnDateChange}
+                onClick={handleDateClick}
+                ref={returnDateRef}
+              />
+            </div>
           </div>
         </div>
 
@@ -404,8 +447,8 @@ const EditScheduleForm = ({ schedule, onUpdate, onCancel }) => {
       {/* デバッグ情報 - 常に表示 */}
       <div style={{marginTop: '20px', padding: '10px', backgroundColor: '#f5f5f5', fontSize: '12px'}}>
         <h4>デバッグ情報</h4>
-        <p>出発日: {formData.departureDate}</p>
-        <p>帰着日: {formData.returnDate}</p>
+        <p>出発日: {formData.departureDate} ({getWeekday(formData.departureDate)}曜日)</p>
+        <p>帰着日: {formData.returnDate} ({getWeekday(formData.returnDate)}曜日)</p>
         <p>車種: {formData.busType}</p>
         <p>計算された予約日数: {formData.span}日</p>
         <p>出発日入力値 (ref): {departureDateRef.current?.value || '未設定'}</p>

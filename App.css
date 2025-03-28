@@ -382,3 +382,35 @@ button {
     flex-direction: column;
   }
 }
+
+/* 曜日表示のためのスタイル追加 */
+
+/* 日付入力と曜日表示のコンテナ */
+.date-with-weekday {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 5px;
+}
+
+/* 曜日表示のスタイル */
+.weekday-display {
+  font-size: 14px;
+  font-weight: bold;
+  margin-bottom: 3px;
+  padding: 2px 0;
+}
+
+/* 日曜日の色 */
+.weekday-display.sunday {
+  color: #ff0000;
+}
+
+/* 土曜日の色 */
+.weekday-display.saturday {
+  color: #0000ff;
+}
+
+/* 平日の色 */
+.weekday-display.weekday {
+  color: #333333;
+}
